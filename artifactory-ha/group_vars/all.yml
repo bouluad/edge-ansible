@@ -1,0 +1,5 @@
+artifactory_s3_url: https://s3-onprime.company.local/artifactory/artifactory-ha.zip
+jfrog_home: /opt/jfrog/artifactory
+postgres_host: your-postgres-hostname
+postgres_user: artifactory
+postgres_password: your-password
