@@ -1,0 +1,62 @@
+- name: Install dependencies
+  apt:
+    name: [openjdk-17-jdk, unzip, curl, ca-certificates]
+    state: present
+
+- name: Add CA bundle for S3
+  copy:
+    src: ca-s3-bundle.crt
+    dest: /usr/local/share/ca-certificates/ca-s3-bundle.crt
+  notify: Update CA Certs
+
+- name: Update CA certificates
+  command: update-ca-certificates
+
+- name: Create JFrog parent directory
+  file:
+    path: /opt/jfrog
+    state: directory
+    mode: 0755
+
+- name: Download Artifactory zip from S3
+  get_url:
+    url: "{{ artifactory_s3_url }}"
+    dest: /tmp/artifactory.zip
+    validate_certs: true
+
+- name: Unarchive Artifactory
+  unarchive:
+    src: /tmp/artifactory.zip
+    dest: /opt/jfrog/
+    remote_src: yes
+
+- name: Run JFrog install.sh
+  command: /opt/jfrog/artifactory/app/bin/install.sh
+
+- name: Template system.yaml
+  template:
+    src: system.yaml.j2
+    dest: "{{ jfrog_home }}/var/etc/system.yaml"
+
+- name: Template binarystore.xml
+  template:
+    src: binarystore.xml.j2
+    dest: "{{ jfrog_home }}/var/etc/artifactory/binarystore.xml"
+
+- name: Install master.key
+  template:
+    src: master.key.j2
+    dest: "{{ jfrog_home }}/var/etc/security/master.key"
+    mode: '0400'
+
+- name: Install license.lic
+  template:
+    src: license.lic.j2
+    dest: "{{ jfrog_home }}/var/etc/artifactory/license.lic"
+    mode: '0644'
+
+- name: Start Artifactory
+  systemd:
+    name: artifactory
+    state: started
+    enabled: true
