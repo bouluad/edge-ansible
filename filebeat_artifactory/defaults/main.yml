@@ -1,0 +1,5 @@
+filebeat_version: "7.17.15"
+filebeat_elasticsearch_host: "http://elk.example.local:9200"
+filebeat_logstash_host: "logstash.example.local:5044"
+filebeat_output: "logstash"  # or "elasticsearch"
+artifactory_log_path: "/opt/jfrog/artifactory/var/log"

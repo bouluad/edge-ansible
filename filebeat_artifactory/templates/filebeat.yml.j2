@@ -1,0 +1,18 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - {{ artifactory_log_path }}/artifactory-service.log
+      - {{ artifactory_log_path }}/access.log
+      - {{ artifactory_log_path }}/request.log
+      - {{ artifactory_log_path }}/artifactory.log
+
+output.{{ filebeat_output }}:
+  {% if filebeat_output == "logstash" %}
+  hosts: ["{{ filebeat_logstash_host }}"]
+  {% elif filebeat_output == "elasticsearch" %}
+  hosts: ["{{ filebeat_elasticsearch_host }}"]
+  {% endif %}
+
+setup.kibana:
+  host: "{{ filebeat_elasticsearch_host }}"
