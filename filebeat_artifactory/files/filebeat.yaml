@@ -1,48 +1,79 @@
 filebeat.inputs:
 - type: log
-  enabled: true
   paths:
     - /var/opt/jfrog/artifactory/logs/artifactory.log
   fields:
     log_type: "service"
   fields_under_root: true
-  tags: ["artifactory", "service"]
+  processors:
+    - dissect:
+        tokenizer: "%{timestamp} %{log.level} [%{thread}] %{class} [%{context}] - %{message}"
+        field: "message"
+        target_prefix: "artifactory"
+    - drop_fields:
+        fields: ["message"]
+        ignore_missing: true
 
 - type: log
-  enabled: true
   paths:
     - /var/opt/jfrog/artifactory/logs/artifactory-request.log
   fields:
     log_type: "request"
   fields_under_root: true
-  tags: ["artifactory", "request"]
+  processors:
+    - dissect:
+        tokenizer: "%{timestamp} %{log.level} [%{requestId}] %{method} %{uri} %{user} %{responseTime}ms %{statusCode}"
+        field: "message"
+        target_prefix: "artifactory"
+    - convert:
+        fields:
+          - {from: "artifactory.responseTime", to: "artifactory.responseTime", type: "integer"}
+          - {from: "artifactory.statusCode", to: "artifactory.statusCode", type: "integer"}
 
 - type: log
-  enabled: true
   paths:
     - /var/opt/jfrog/artifactory/logs/access.log
   fields:
     log_type: "access"
   fields_under_root: true
-  tags: ["access", "traffic"]
+  processors:
+    - dissect:
+        tokenizer: "%{client.ip} - %{user} [%{timestamp}] \"%{method} %{uri} %{protocol}\" %{status} %{size} \"%{referrer}\" \"%{user_agent}\" %{responseTime}"
+        field: "message"
+        target_prefix: "http"
+    - convert:
+        fields:
+          - {from: "http.status", to: "http.status", type: "integer"}
+          - {from: "http.size", to: "http.size", type: "integer"}
+          - {from: "http.responseTime", to: "http.responseTime", type: "integer"}
 
 - type: log
-  enabled: true
   paths:
     - /var/opt/jfrog/artifactory/logs/access-security-audit.log
   fields:
     log_type: "security-audit"
   fields_under_root: true
-  tags: ["audit", "security"]
+  processors:
+    - dissect:
+        tokenizer: "%{timestamp}|%{eventType}|%{principal}|%{resource}|%{action}|%{result}|%{ipAddress}|%{details}"
+        field: "message"
+        target_prefix: "audit"
+    - rename:
+        fields:
+          - {from: "audit.principal", to: "user.name"}
+          - {from: "audit.ipAddress", to: "client.ip"}
 
 - type: log
-  enabled: true
   paths:
     - /var/opt/jfrog/artifactory/logs/access-audit.log
   fields:
     log_type: "audit"
   fields_under_root: true
-  tags: ["audit", "general"]
+  processors:
+    - dissect:
+        tokenizer: "%{timestamp}|%{eventType}|%{user}|%{action}|%{resource}|%{result}"
+        field: "message"
+        target_prefix: "audit"
 
 output.elasticsearch:
   hosts: ["https://your-existing-elasticsearch:9200"]
@@ -62,6 +93,9 @@ output.elasticsearch:
     - index: "access-audit-%{+yyyy.MM.dd}"
       when.equals:
         fields.log_type: "audit"
-  username: "your_username"
-  password: "your_password"
-  ssl.certificate_authorities: ["/path/to/ca.crt"]
+  pipeline: "artifactory_pipeline"  # Optional: for additional processing in Elasticsearch
+
+setup.ilm:
+  enabled: true
+  policy_name: "artifactory_policy"
+  rollover_alias: "artifactory-logs"
