@@ -1,0 +1,67 @@
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/opt/jfrog/artifactory/logs/artifactory.log
+  fields:
+    log_type: "service"
+  fields_under_root: true
+  tags: ["artifactory", "service"]
+
+- type: log
+  enabled: true
+  paths:
+    - /var/opt/jfrog/artifactory/logs/artifactory-request.log
+  fields:
+    log_type: "request"
+  fields_under_root: true
+  tags: ["artifactory", "request"]
+
+- type: log
+  enabled: true
+  paths:
+    - /var/opt/jfrog/artifactory/logs/access.log
+  fields:
+    log_type: "access"
+  fields_under_root: true
+  tags: ["access", "traffic"]
+
+- type: log
+  enabled: true
+  paths:
+    - /var/opt/jfrog/artifactory/logs/access-security-audit.log
+  fields:
+    log_type: "security-audit"
+  fields_under_root: true
+  tags: ["audit", "security"]
+
+- type: log
+  enabled: true
+  paths:
+    - /var/opt/jfrog/artifactory/logs/access-audit.log
+  fields:
+    log_type: "audit"
+  fields_under_root: true
+  tags: ["audit", "general"]
+
+output.elasticsearch:
+  hosts: ["https://your-existing-elasticsearch:9200"]
+  indices:
+    - index: "artifactory-service-%{+yyyy.MM.dd}"
+      when.equals:
+        fields.log_type: "service"
+    - index: "artifactory-request-%{+yyyy.MM.dd}"
+      when.equals:
+        fields.log_type: "request"
+    - index: "artifactory-access-%{+yyyy.MM.dd}"
+      when.equals:
+        fields.log_type: "access"
+    - index: "access-security-audit-%{+yyyy.MM.dd}"
+      when.equals:
+        fields.log_type: "security-audit"
+    - index: "access-audit-%{+yyyy.MM.dd}"
+      when.equals:
+        fields.log_type: "audit"
+  username: "your_username"
+  password: "your_password"
+  ssl.certificate_authorities: ["/path/to/ca.crt"]
